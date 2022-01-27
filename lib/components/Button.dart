@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 class Button extends StatelessWidget {
-  Button({this.title, this.color, this.onPressed});
+  Button({required this.title, required this.color, required this.onPressed});
   final String title;
   final Color color;
-  final Function onPressed;
+  final Function() onPressed;
 
   @override
   Widget build(BuildContext context) {
