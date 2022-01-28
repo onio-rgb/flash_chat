@@ -13,8 +13,10 @@ class _ChatScreenState extends State<ChatScreen> {
   final controller = TextEditingController();
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
+
   late User logginUser;
   late String messageText;
+
   @override
   void initState() {
     super.initState();
@@ -69,21 +71,58 @@ class _ChatScreenState extends State<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _firestore.collection('messages').snapshots(),
+              stream: _firestore
+                  .collection('messages')
+                  .orderBy('time', descending: false)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
+                  String currentChatMember = "-";
+                  int i = 0;
                   final messages = snapshot.data!.docs;
                   List<MessageBubble> messagewidgets = [];
                   for (var message in messages) {
                     final text = message.data()['text'];
-                    final sender = message.data()['sender'];
-                    final messageWidget =
-                        MessageBubble(sender: sender, text: text);
+                    String sender = message.data()['sender'];
+                    final messageWidget;
+                    print("$i No $currentChatMember vs $sender");
+                    if (sender == logginUser.email) {
+                      messageWidget = MessageBubble(
+                        sender: sender,
+                        text: text,
+                        color: Colors.blue,
+                        align: CrossAxisAlignment.end,
+                        radius: BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            bottomLeft: Radius.circular(30),
+                            bottomRight: Radius.circular(30)),
+                        showSender: false,
+                      );
+                    } else {
+                      messageWidget = MessageBubble(
+                        sender: sender,
+                        text: text,
+                        color: Colors.white,
+                        align: CrossAxisAlignment.start,
+                        radius: BorderRadius.only(
+                            topRight: Radius.circular(30),
+                            bottomLeft: Radius.circular(30),
+                            bottomRight: Radius.circular(30)),
+                        showSender:
+                            (currentChatMember == sender) ? (false) : (true),
+                        //true,
+                      );
+                    }
+
                     messagewidgets.add(messageWidget);
+                    currentChatMember = "$sender";
+                    i = i + 1;
                   }
+                  currentChatMember = "-";
                   return Expanded(
                     child: ListView(
-                      children: messagewidgets,
+                      reverse: true,
+                      children: messagewidgets.reversed.toList(),
                     ),
                   );
                 } else {
@@ -109,8 +148,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   FlatButton(
                     onPressed: () {
                       controller.clear();
-                      _firestore.collection('messages').add(
-                          {'text': messageText, 'sender': logginUser.email});
+                      _firestore.collection('messages').add({
+                        'text': messageText,
+                        'sender': logginUser.email,
+                        'time': Timestamp.now()
+                      });
                     },
                     child: Text(
                       'Send',
@@ -128,21 +170,32 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 class MessageBubble extends StatelessWidget {
-  String sender;
+  String? sender;
   String text;
-  MessageBubble({required this.sender, required this.text});
+  CrossAxisAlignment align;
+  Color color;
+  BorderRadius radius;
+  bool showSender;
+
+  MessageBubble(
+      {this.sender,
+      required this.text,
+      required this.color,
+      required this.align,
+      required this.radius,
+      required this.showSender});
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: align,
       children: [
-        Text(sender),
+        (showSender) ? (Text(sender!)) : (Container()),
         Padding(
           padding: const EdgeInsets.all(8.0),
           child: Material(
-            borderRadius: BorderRadius.all(Radius.circular(30)),
-            color: Colors.blue,
+            borderRadius: radius,
+            color: color,
             elevation: 7.0,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
